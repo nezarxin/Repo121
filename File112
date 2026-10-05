@@ -1,1 +1,911 @@
+html
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalSphere - Baseband & Broadband Visualized</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        mono: {
+                            bg: '#000000',
+                            card: '#0a0a0a',
+                            border: '#262626',
+                            accent: '#ffffff',
+                            muted: '#a1a1aa'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
 
+        /* High-Contrast Black & White Aesthetics */
+        .glow-white {
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.15);
+        }
+        .text-glow-white {
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+        }
+        .glass-panel {
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        
+        /* Light Mode Glass Panel Overrides */
+        .light .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(0, 0, 0, 0.12);
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        /* Smooth Scroll-Driven Reveal Animations */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: opacity, transform;
+        }
+        .reveal-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Custom monochrome range sliders */
+        input[type=range] {
+            accent-color: #ffffff;
+        }
+        .light input[type=range] {
+            accent-color: #000000;
+        }
+    </style>
+</head>
+<body class="bg-black text-zinc-100 font-sans antialiased min-h-screen selection:bg-white selection:text-black transition-colors duration-500">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-zinc-800/80">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-white text-black flex items-center justify-center font-black text-xl shadow-lg shadow-white/10">
+                    ~
+                </div>
+                <span class="text-xl font-bold tracking-tight text-white dark:text-white light:text-black">
+                    SignalSphere
+                </span>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-1 text-sm font-medium text-zinc-400">
+                <a href="#simulator" class="px-3 py-2 rounded-lg hover:text-white hover:bg-zinc-800/60 transition-colors">Simulator</a>
+                <a href="#spectrum" class="px-3 py-2 rounded-lg hover:text-white hover:bg-zinc-800/60 transition-colors">Spectrum</a>
+                <a href="#comparison" class="px-3 py-2 rounded-lg hover:text-white hover:bg-zinc-800/60 transition-colors">Matrix</a>
+                <a href="#applications" class="px-3 py-2 rounded-lg hover:text-white hover:bg-zinc-800/60 transition-colors">Applications</a>
+                <a href="#calculator" class="px-3 py-2 rounded-lg hover:text-white hover:bg-zinc-800/60 transition-colors">Math Lab</a>
+            </nav>
+
+            <div class="flex items-center space-x-3">
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle" onclick="toggleMonochromeTheme()" class="p-2 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white transition-all flex items-center justify-center" title="Toggle Theme">
+                    <svg id="sun-icon" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                    <svg id="moon-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                </button>
+
+                <a href="#simulator" class="bg-white text-black hover:bg-zinc-200 font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-md flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    Live Demo
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <section class="relative overflow-hidden py-20 lg:py-28 border-b border-zinc-900 reveal-on-scroll">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 mb-6">
+                <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                Monochrome Telecommunication & Networking Lab
+            </div>
+            
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-white tracking-tight leading-tight max-w-4xl mx-auto">
+                Understanding <span class="text-white underline decoration-zinc-600 decoration-wavy underline-offset-8">Baseband</span> & <span class="text-zinc-400">Broadband</span>
+            </h1>
+            
+            <p class="mt-6 text-lg sm:text-xl text-zinc-400 max-w-2xl mx-auto font-normal leading-relaxed">
+                Explore how digital networks transport data—from raw digital pulses to multi-channel modulated carrier waves in high contrast visual perfection.
+            </p>
+
+            <!-- Quick Action Cards -->
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto text-left">
+                <!-- Baseband Card -->
+                <div class="p-6 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-white transition-all glow-white group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-zinc-900 text-white border border-zinc-700">DIGITAL PULSES</span>
+                        <svg class="w-6 h-6 text-white group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">Baseband Transmission</h3>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Uses the <strong>entire bandwidth</strong> of a medium to transmit a single unmodulated digital signal (0s and 1s) over short distances.
+                    </p>
+                    <div class="mt-4 flex items-center text-xs font-mono text-zinc-300 gap-2">
+                        <span>• Ethernet (802.3)</span>
+                        <span>• USB / PCIe</span>
+                        <span>• Bus Topology</span>
+                    </div>
+                </div>
+
+                <!-- Broadband Card -->
+                <div class="p-6 rounded-2xl bg-zinc-950 border border-zinc-800 hover:border-white transition-all glow-white group">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-zinc-900 text-zinc-300 border border-zinc-700">MODULATED CARRIERS</span>
+                        <svg class="w-6 h-6 text-zinc-300 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white mb-2">Broadband Transmission</h3>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Divides the frequency spectrum into <strong>multiple channels</strong> using analog carrier waves to transmit data simultaneously over long distances.
+                    </p>
+                    <div class="mt-4 flex items-center text-xs font-mono text-zinc-300 gap-2">
+                        <span>• Cable TV (DOCSIS)</span>
+                        <span>• Fiber Optic</span>
+                        <span>• Wi-Fi & 5G</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="simulator" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal-on-scroll">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+                <span class="text-xs font-mono text-zinc-400 tracking-wider uppercase">Interactive Laboratory</span>
+                <h2 class="text-3xl font-extrabold text-white mt-1">Real-Time Waveform Oscilloscope</h2>
+                <p class="text-zinc-400 text-sm mt-1">Compare digital square pulses (Baseband) vs. frequency-multiplexed modulated sine waves (Broadband).</p>
+            </div>
+            
+            <!-- Controls Bar -->
+            <div class="flex items-center gap-3 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
+                <button id="btn-mode-baseband" onclick="switchSimulatorMode('baseband')" class="px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white text-black shadow-md">
+                    Baseband Mode
+                </button>
+                <button id="btn-mode-broadband" onclick="switchSimulatorMode('broadband')" class="px-4 py-2 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white">
+                    Broadband Mode
+                </button>
+            </div>
+        </div>
+
+        <!-- Simulator Canvas Container -->
+        <div class="rounded-2xl border border-zinc-800 bg-zinc-950 overflow-hidden shadow-2xl relative">
+            
+            <!-- Top Controls Toolbar -->
+            <div class="p-4 border-b border-zinc-800/80 bg-zinc-900/60 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <label class="text-xs font-mono text-zinc-400">Data Sequence:</label>
+                        <input type="text" id="binary-input" value="10110010" maxlength="12" class="bg-black border border-zinc-700 text-white font-mono text-xs px-2.5 py-1.5 rounded-md w-28 focus:outline-none focus:border-white transition-colors" oninput="updateBinarySequence(this.value)">
+                    </div>
+
+                    <!-- Enhanced Speed Control Group -->
+                    <div class="flex items-center gap-2 bg-black/60 p-1.5 rounded-xl border border-zinc-800">
+                        <span class="text-xs font-mono text-zinc-400 px-1 font-semibold">Speed:</span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="setSpeed(0.5)" data-speed="0.5" class="speed-btn px-2 py-1 rounded-md text-xs font-mono bg-zinc-800 text-zinc-400 hover:text-white transition-colors">0.5x</button>
+                            <button onclick="setSpeed(1.0)" data-speed="1.0" class="speed-btn px-2 py-1 rounded-md text-xs font-mono bg-zinc-800 text-zinc-400 hover:text-white transition-colors">1x</button>
+                            <button onclick="setSpeed(2.0)" data-speed="2.0" class="speed-btn px-2 py-1 rounded-md text-xs font-mono bg-white text-black font-bold transition-colors">2x</button>
+                            <button onclick="setSpeed(4.0)" data-speed="4.0" class="speed-btn px-2 py-1 rounded-md text-xs font-mono bg-zinc-800 text-zinc-400 hover:text-white transition-colors">4x</button>
+                        </div>
+                        <input type="range" id="speed-range" min="0.5" max="5" step="0.5" value="2" class="w-16 sm:w-20 accent-white ml-1 cursor-pointer" oninput="updateSpeed(this.value)">
+                        <span id="speed-val" class="text-xs font-mono text-white font-bold w-9 text-center bg-zinc-900 border border-zinc-700 px-1.5 py-0.5 rounded">2.0x</span>
+                    </div>
+
+                    <!-- Enhanced Noise Control Group -->
+                    <div class="flex items-center gap-2 bg-black/60 p-1.5 rounded-xl border border-zinc-800">
+                        <span class="text-xs font-mono text-zinc-400 px-1 font-semibold">Noise:</span>
+                        <input type="range" id="noise-range" min="0" max="30" value="5" class="w-16 sm:w-20 accent-white cursor-pointer" oninput="updateNoise(this.value)">
+                        <span id="noise-val" class="text-xs font-mono text-white font-bold w-9 text-center bg-zinc-900 border border-zinc-700 px-1.5 py-0.5 rounded">5%</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <span id="simulator-badge" class="text-xs font-mono px-3 py-1 rounded-full bg-zinc-800 text-white border border-zinc-700">
+                        Mode: Single Digital Channel (NRZ Encoding)
+                    </span>
+                    <button onclick="togglePauseSimulator()" id="btn-pause" class="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs">
+                        <svg id="icon-pause" class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Viewport -->
+            <div class="relative w-full h-80 sm:h-96">
+                <canvas id="signalCanvas" class="w-full h-full bg-black"></canvas>
+                
+                <!-- HUD Info Overlay -->
+                <div id="canvas-hud" class="absolute bottom-4 left-4 p-3 rounded-lg bg-black/90 border border-zinc-800 text-xs font-mono space-y-1 pointer-events-none backdrop-blur">
+                    <div class="text-zinc-400">Bandwidth Usage: <span id="hud-bw" class="text-white font-bold">100% Single Signal</span></div>
+                    <div class="text-zinc-400">Transmission Type: <span id="hud-type" class="text-zinc-300">Unmodulated Digital Pulses</span></div>
+                    <div class="text-zinc-400">Channel Count: <span id="hud-channels" class="text-white">1 Shared Bus</span></div>
+                </div>
+            </div>
+
+            <!-- Interactive Description Banner -->
+            <div id="simulator-info-box" class="p-4 bg-zinc-900/90 border-t border-zinc-800 text-sm text-zinc-300 leading-relaxed">
+                <strong class="text-white font-mono">Baseband Mechanism:</strong> Voltage transitions directly encode raw 1s and 0s onto the conductor. Because square pulses require a continuous frequency spectrum down to 0 Hz (DC), no other channels can share this medium simultaneously without interference.
+            </div>
+        </div>
+    </section>
+
+    <section id="spectrum" class="py-16 bg-zinc-950/80 border-y border-zinc-900 reveal-on-scroll">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <span class="text-xs font-mono text-zinc-400 uppercase tracking-widest">Spectral Allocation</span>
+                <h2 class="text-3xl font-extrabold text-white mt-1">Frequency Spectrum Breakdown</h2>
+                <p class="text-zinc-400 text-sm mt-2">
+                    Visualizing how frequency bands are partitioned in physical media for Baseband vs Broadband multiplexing (FDM).
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Baseband Spectrum Card -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-white inline-block"></span>
+                            Baseband Spectrum
+                        </h3>
+                        <span class="text-xs font-mono px-2.5 py-1 rounded bg-zinc-900 text-zinc-300 border border-zinc-700">0 Hz to B_max</span>
+                    </div>
+                    
+                    <p class="text-sm text-zinc-400 mb-6">
+                        The raw signal monopolizes the complete frequency band from 0 Hz (Direct Current) up to the maximum media bandwidth limit.
+                    </p>
+
+                    <!-- Spectrum Bar Container -->
+                    <div class="space-y-3 font-mono text-xs">
+                        <div class="flex justify-between text-zinc-500">
+                            <span>0 Hz (DC)</span>
+                            <span>Channel Capacity Limit</span>
+                        </div>
+                        <div class="h-16 w-full rounded-xl bg-black p-1 border border-zinc-800 relative flex items-center">
+                            <div class="h-full w-full bg-gradient-to-r from-zinc-700 via-zinc-400 to-white rounded-lg flex items-center justify-center font-bold text-black tracking-wider shadow-inner">
+                                SINGLE EXCLUSIVE CHANNEL (Baseband Signal)
+                            </div>
+                        </div>
+                        <div class="text-right text-zinc-500 text-2xs">Bidirectional or half-duplex baseband transmission</div>
+                    </div>
+
+                    <div class="mt-6 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-xs text-zinc-300">
+                        <div class="font-bold text-white mb-1">Key Takeaway:</div>
+                        No modulation involved. Simple hardware, but only one communication session can exist at a time per wire.
+                    </div>
+                </div>
+
+                <!-- Broadband Spectrum Card -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-zinc-400 inline-block"></span>
+                            Broadband Spectrum (FDM)
+                        </h3>
+                        <span class="text-xs font-mono px-2.5 py-1 rounded bg-zinc-900 text-zinc-300 border border-zinc-700">Frequency Division</span>
+                    </div>
+
+                    <p class="text-sm text-zinc-400 mb-6">
+                        The spectrum is split into distinct, non-overlapping carrier frequency channels so voice, TV, and internet travel together.
+                    </p>
+
+                    <!-- Spectrum Bar Container -->
+                    <div class="space-y-3 font-mono text-xs">
+                        <div class="flex justify-between text-zinc-500">
+                            <span>50 MHz</span>
+                            <span>1 GHz+</span>
+                        </div>
+                        <div class="h-16 w-full rounded-xl bg-black p-1 border border-zinc-800 flex items-center gap-1.5">
+                            <div class="h-full flex-1 bg-zinc-800 border border-zinc-700 rounded-md flex items-center justify-center text-white font-bold text-[10px] text-center px-1">
+                                CH1: Voice
+                            </div>
+                            <div class="h-full flex-1 bg-zinc-700 border border-zinc-600 rounded-md flex items-center justify-center text-white font-bold text-[10px] text-center px-1">
+                                CH2: Data
+                            </div>
+                            <div class="h-full flex-1 bg-zinc-500 border border-zinc-400 rounded-md flex items-center justify-center text-black font-bold text-[10px] text-center px-1">
+                                CH3: Cable TV
+                            </div>
+                            <div class="h-full flex-1 bg-zinc-200 rounded-md flex items-center justify-center text-black font-bold text-[10px] text-center px-1">
+                                CH4: Uplink
+                            </div>
+                        </div>
+                        <div class="flex justify-around text-zinc-500 text-2xs">
+                            <span>f₁ carrier</span>
+                            <span>f₂ carrier</span>
+                            <span>f₃ carrier</span>
+                            <span>f₄ carrier</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-xs text-zinc-300">
+                        <div class="font-bold text-white mb-1">Key Takeaway:</div>
+                        Uses analog Modems (Modulator-Demodulator) to shift data to higher RF frequency bands, permitting massive parallel throughput.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="comparison" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal-on-scroll">
+        <div class="text-center max-w-3xl mx-auto mb-12">
+            <span class="text-xs font-mono text-zinc-400 uppercase tracking-widest">Engineering Comparison</span>
+            <h2 class="text-3xl font-extrabold text-white mt-1">Feature Matrix & Technical Differences</h2>
+            <p class="text-zinc-400 text-sm mt-2">Comprehensive breakdown of transmission attributes, range, components, and signal characteristics.</p>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-zinc-800 glass-panel shadow-2xl">
+            <table class="w-full text-left text-sm border-collapse">
+                <thead>
+                    <tr class="bg-zinc-900 border-b border-zinc-800 text-xs font-mono text-zinc-400">
+                        <th class="p-4 font-semibold uppercase tracking-wider">Feature</th>
+                        <th class="p-4 font-semibold uppercase tracking-wider text-white bg-zinc-950/40">Baseband Transmission</th>
+                        <th class="p-4 font-semibold uppercase tracking-wider text-zinc-300 bg-zinc-900/40">Broadband Transmission</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-800/60 font-sans text-zinc-300">
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Signal Type</td>
+                        <td class="p-4 text-white font-mono">Digital Pulses (Square Waves)</td>
+                        <td class="p-4 text-zinc-300 font-mono">Analog Carrier Waves (Sine Waves)</td>
+                    </tr>
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Modulation Required?</td>
+                        <td class="p-4">No modulation (Direct voltage pulses)</td>
+                        <td class="p-4">Yes (AM, FM, PSK, QAM modulation)</td>
+                    </tr>
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Channel Multiplexing</td>
+                        <td class="p-4">Time Division Multiplexing (TDM)</td>
+                        <td class="p-4">Frequency Division Multiplexing (FDM)</td>
+                    </tr>
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Transmission Distance</td>
+                        <td class="p-4">Short distance (Typically &lt; 2 km due to attenuation)</td>
+                        <td class="p-4">Long distance (Thousands of km with amplifiers)</td>
+                    </tr>
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Directionality</td>
+                        <td class="p-4">Bidirectional transmission on same line</td>
+                        <td class="p-4">Unidirectional (Requires dual paths or distinct frequency bands)</td>
+                    </tr>
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Bus Topology / Media</td>
+                        <td class="p-4">Ethernet UTP (Cat5e/Cat6), Coaxial (50 Ω), USB</td>
+                        <td class="p-4">Coaxial (75 Ω DOCSIS), Optical Fiber, Air (Wireless)</td>
+                    </tr>
+                    <tr class="hover:bg-zinc-900/50 transition-colors">
+                        <td class="p-4 font-semibold text-white">Hardware Requirement</td>
+                        <td class="p-4">Repeaters, Switches, Transceivers</td>
+                        <td class="p-4">RF Amplifiers, Modems, Frequency Synthesizers</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="applications" class="py-16 bg-zinc-950/80 border-t border-zinc-900 reveal-on-scroll">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <span class="text-xs font-mono text-zinc-400 uppercase tracking-widest">Practical Engineering</span>
+                <h2 class="text-3xl font-extrabold text-white mt-1">Real-World Technologies & Use Cases</h2>
+                <p class="text-zinc-400 text-sm mt-2">Where do baseband and broadband power our everyday digital lives?</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- App 1: Ethernet LAN -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 hover:border-white transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                    </div>
+                    <span class="text-2xs font-mono text-zinc-400 uppercase font-bold tracking-wider">Baseband Tech</span>
+                    <h3 class="text-xl font-bold text-white mt-1 mb-2">Ethernet Networks (IEEE 802.3)</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Twisted-pair Ethernet cables (Cat 6a) transmit high-speed voltage transitions using Manchester or PAM-16 encoding directly without RF carrier waves.
+                    </p>
+                </div>
+
+                <!-- App 2: Cable Broadband -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 hover:border-white transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    </div>
+                    <span class="text-2xs font-mono text-zinc-400 uppercase font-bold tracking-wider">Broadband Tech</span>
+                    <h3 class="text-xl font-bold text-white mt-1 mb-2">DOCSIS Cable Internet</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Coaxial television cables deliver hundreds of TV channels alongside gigabit downstream internet data simultaneously over distinct RF frequency bands.
+                    </p>
+                </div>
+
+                <!-- App 3: Fiber Optics -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 hover:border-white transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <span class="text-2xs font-mono text-zinc-400 uppercase font-bold tracking-wider">Broadband Tech</span>
+                    <h3 class="text-xl font-bold text-white mt-1 mb-2">Fiber WDM Networks</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Wavelength Division Multiplexing (WDM) sends dozens of different light frequencies (colors) down a single glass fiber strand for terabit long-haul backbones.
+                    </p>
+                </div>
+
+                <!-- App 4: Computer Bus -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 hover:border-white transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                    </div>
+                    <span class="text-2xs font-mono text-zinc-400 uppercase font-bold tracking-wider">Baseband Tech</span>
+                    <h3 class="text-xl font-bold text-white mt-1 mb-2">USB & PCIe Interfaces</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Internal hardware interconnects like PCIe and USB-C pass ultra-fast baseband pulses across micro-scale motherboard traces at multi-gigahertz speeds.
+                    </p>
+                </div>
+
+                <!-- App 5: Cellular 5G -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 hover:border-white transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 010-7.778M12 20a9.99 9.99 0 000-16m3.889 12.404a5.5 5.5 0 000-7.778M12 12h.01"/></svg>
+                    </div>
+                    <span class="text-2xs font-mono text-zinc-400 uppercase font-bold tracking-wider">Broadband Tech</span>
+                    <h3 class="text-xl font-bold text-white mt-1 mb-2">5G & Wi-Fi Wireless</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Wireless protocols encode digital data into complex OFDM (Orthogonal Frequency-Division Multiplexing) carrier subcarriers transmitted through open air.
+                    </p>
+                </div>
+
+                <!-- App 6: DSL -->
+                <div class="p-6 rounded-2xl glass-panel border border-zinc-800 hover:border-white transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                    </div>
+                    <span class="text-2xs font-mono text-zinc-400 uppercase font-bold tracking-wider">Broadband Tech</span>
+                    <h3 class="text-xl font-bold text-white mt-1 mb-2">DSL (Digital Subscriber Line)</h3>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Converts copper telephone wire bandwidth into multiple high-frequency channels, leaving lower frequencies untouched for traditional analog voice calls.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <section id="calculator" class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 reveal-on-scroll">
+        <div class="glass-panel rounded-3xl p-6 sm:p-10 border border-zinc-800">
+            <div class="max-w-3xl">
+                <span class="text-xs font-mono text-zinc-400 uppercase tracking-wider">Telecom Math Lab</span>
+                <h2 class="text-3xl font-extrabold text-white mt-1">Theoretical Channel Capacity Calculator</h2>
+                <p class="text-zinc-400 text-sm mt-2">
+                    Calculate theoretical maximum bitrate limits for noiseless channels (<strong>Nyquist Theorem</strong>) and noisy channels (<strong>Shannon-Hartley Theorem</strong>).
+                </p>
+            </div>
+
+            <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Inputs & Sliders -->
+                <div class="space-y-6 bg-zinc-950 p-6 rounded-2xl border border-zinc-800">
+                    <h3 class="text-base font-bold text-white border-b border-zinc-800 pb-3 flex items-center justify-between">
+                        <span>Channel Parameters</span>
+                        <span class="text-xs font-mono text-zinc-400">Live Input</span>
+                    </h3>
+
+                    <!-- Bandwidth Slider -->
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-2">
+                            <span class="text-zinc-300">Bandwidth (B)</span>
+                            <span id="calc-bw-val" class="text-white font-bold">10 MHz</span>
+                        </div>
+                        <input type="range" id="input-bw" min="1" max="100" value="10" class="w-full accent-white" oninput="calculateCapacity()">
+                    </div>
+
+                    <!-- Discrete Signal Levels (Nyquist) -->
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-2">
+                            <span class="text-zinc-300">Signal Levels (L - Nyquist)</span>
+                            <span id="calc-levels-val" class="text-white font-bold">2 (Binary)</span>
+                        </div>
+                        <select id="input-levels" onchange="calculateCapacity()" class="w-full bg-black border border-zinc-700 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-white">
+                            <option value="2">2 Levels (1 bit/symbol - binary)</option>
+                            <option value="4">4 Levels (2 bits/symbol - QPSK)</option>
+                            <option value="16">16 Levels (4 bits/symbol - 16-QAM)</option>
+                            <option value="256">256 Levels (8 bits/symbol - 256-QAM)</option>
+                        </select>
+                    </div>
+
+                    <!-- Signal-to-Noise Ratio (Shannon) -->
+                    <div>
+                        <div class="flex justify-between text-xs font-mono mb-2">
+                            <span class="text-zinc-300">Signal-to-Noise Ratio (SNR dB)</span>
+                            <span id="calc-snr-val" class="text-zinc-300 font-bold">30 dB</span>
+                        </div>
+                        <input type="range" id="input-snr" min="0" max="60" value="30" class="w-full accent-white" oninput="calculateCapacity()">
+                    </div>
+                </div>
+
+                <!-- Results Output -->
+                <div class="space-y-6 flex flex-col justify-between">
+                    <!-- Nyquist Result Card -->
+                    <div class="p-6 rounded-2xl bg-zinc-950 border border-zinc-800">
+                        <div class="text-xs font-mono text-zinc-400 mb-1">NYQUIST BIT RATE (Noiseless Channel)</div>
+                        <div class="text-3xl font-extrabold text-white font-mono" id="res-nyquist">20.00 Mbps</div>
+                        <div class="text-xs text-zinc-400 mt-2 font-mono">
+                            Formula: Bit Rate = 2 × B × log₂(L)
+                        </div>
+                    </div>
+
+                    <!-- Shannon Result Card -->
+                    <div class="p-6 rounded-2xl bg-zinc-950 border border-zinc-800">
+                        <div class="text-xs font-mono text-zinc-400 mb-1">SHANNON CAPACITY (Real Noisy Channel)</div>
+                        <div class="text-3xl font-extrabold text-white font-mono" id="res-shannon">99.66 Mbps</div>
+                        <div class="text-xs text-zinc-400 mt-2 font-mono">
+                            Formula: Capacity C = B × log₂(1 + SNR)
+                        </div>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-black border border-zinc-800 text-xs text-zinc-400">
+                        💡 <strong>Engineering Tip:</strong> Baseband systems use high signal level encodings (like PAM-16 in Gigabit Ethernet) to increase Nyquist bitrate over fixed copper wire bandwidths.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="border-t border-zinc-900 bg-black py-10 text-center text-xs text-zinc-500 font-mono">
+        <div class="max-w-7xl mx-auto px-4">
+            <p class="mb-2">SignalSphere Educational Platform • Designed for Data Communications</p>
+            <p>Monochrome Baseband Digital Pulses vs Broadband Multiplexed Carrier Waves</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global State variables
+        let simMode = 'baseband';
+        let binaryData = '10110010';
+        let speed = 2;
+        let noiseLevel = 5;
+        let isPaused = false;
+        let animationFrameId = null;
+        let timeStep = 0;
+        let isLightMode = false;
+
+        window.addEventListener('load', () => {
+            initCanvas();
+            calculateCapacity();
+            initScrollReveal();
+            window.addEventListener('resize', handleCanvasResize);
+        });
+
+        function initScrollReveal() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.reveal-on-scroll').forEach(el => observer.observe(el));
+        }
+
+        function toggleMonochromeTheme() {
+            isLightMode = !isLightMode;
+            const sunIcon = document.getElementById('sun-icon');
+            const moonIcon = document.getElementById('moon-icon');
+            
+            if (isLightMode) {
+                document.body.classList.remove('bg-black', 'text-zinc-100');
+                document.body.classList.add('bg-white', 'text-black', 'light');
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            } else {
+                document.body.classList.remove('bg-white', 'text-black', 'light');
+                document.body.classList.add('bg-black', 'text-zinc-100');
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            }
+        }
+
+        const canvas = document.getElementById('signalCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function handleCanvasResize() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+
+        function initCanvas() {
+            handleCanvasResize();
+            startAnimation();
+        }
+
+        function startAnimation() {
+            function draw() {
+                if (!isPaused) {
+                    timeStep += speed * 0.8;
+                }
+                
+                const width = canvas.width / window.devicePixelRatio;
+                const height = canvas.height / window.devicePixelRatio;
+
+                // Clear background grid
+                ctx.fillStyle = isLightMode ? '#f4f4f5' : '#000000';
+                ctx.fillRect(0, 0, width, height);
+
+                // Draw Grid Lines
+                ctx.strokeStyle = isLightMode ? '#e4e4e7' : '#18181b';
+                ctx.lineWidth = 1;
+                const gridSize = 30;
+                
+                ctx.beginPath();
+                for (let x = 0; x < width; x += gridSize) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                }
+                for (let y = 0; y < height; y += gridSize) {
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                }
+                ctx.stroke();
+
+                // Draw Center Line
+                ctx.strokeStyle = isLightMode ? '#a1a1aa' : '#3f3f46';
+                ctx.beginPath();
+                ctx.moveTo(0, height / 2);
+                ctx.lineTo(width, height / 2);
+                ctx.stroke();
+
+                if (simMode === 'baseband') {
+                    renderBasebandWave(width, height);
+                } else {
+                    renderBroadbandWave(width, height);
+                }
+
+                animationFrameId = requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        function renderBasebandWave(width, height) {
+            const bitWidth = 80;
+            const centerY = height / 2;
+            const amplitude = 60;
+            const sequence = binaryData || '1010';
+
+            ctx.save();
+            ctx.shadowColor = isLightMode ? '#000000' : '#ffffff';
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = isLightMode ? '#000000' : '#ffffff';
+            ctx.lineWidth = 3.5;
+
+            ctx.beginPath();
+
+            let isFirst = true;
+            const totalWidth = sequence.length * bitWidth;
+
+            for (let x = 0; x < width + bitWidth; x += 2) {
+                const virtualX = (x + timeStep) % totalWidth;
+                const bitIndex = Math.floor(virtualX / bitWidth) % sequence.length;
+                const bitVal = sequence[bitIndex] === '1' ? 1 : -1;
+
+                const noise = (Math.random() - 0.5) * (noiseLevel * 0.8);
+                const targetY = centerY - (bitVal * amplitude) + noise;
+
+                if (isFirst) {
+                    ctx.moveTo(x, targetY);
+                    isFirst = false;
+                } else {
+                    const prevVirtualX = ((x - 2) + timeStep) % totalWidth;
+                    const prevBitIndex = Math.floor(prevVirtualX / bitWidth) % sequence.length;
+                    
+                    if (bitIndex !== prevBitIndex) {
+                        ctx.lineTo(x, targetY);
+                    } else {
+                        ctx.lineTo(x, targetY);
+                    }
+                }
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Render Bit Indicators on Top
+            ctx.fillStyle = isLightMode ? '#3f3f46' : '#a1a1aa';
+            ctx.font = '12px JetBrains Mono, monospace';
+            for (let i = 0; i < width / bitWidth + 2; i++) {
+                const xPos = (i * bitWidth) - (timeStep % bitWidth);
+                const bitIndex = Math.floor(((xPos + timeStep) % totalWidth) / bitWidth) % sequence.length;
+                if (xPos >= 0 && xPos <= width) {
+                    const currentBit = sequence[bitIndex] || '0';
+                    ctx.fillText(`Bit: ${currentBit}`, xPos + 25, 30);
+                    
+                    // Vertical bit boundary guidelines
+                    ctx.strokeStyle = isLightMode ? '#d4d4d8' : '#27272a';
+                    ctx.setLineDash([4, 4]);
+                    ctx.beginPath();
+                    ctx.moveTo(xPos, 0);
+                    ctx.lineTo(xPos, height);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+
+        function renderBroadbandWave(width, height) {
+            const centerY = height / 2;
+            
+            // Monochrome Channel Palette
+            const channels = [
+                { name: 'Channel 1 (Voice)', color: isLightMode ? '#71717a' : '#52525b', freq: 0.03, amp: 25, offset: 0 },
+                { name: 'Channel 2 (Data)', color: isLightMode ? '#a1a1aa' : '#71717a', freq: 0.08, amp: 20, offset: 2 },
+                { name: 'Channel 3 (Video)', color: isLightMode ? '#d4d4d8' : '#a1a1aa', freq: 0.15, amp: 15, offset: 4 }
+            ];
+
+            // Render individual subchannels
+            channels.forEach((ch, idx) => {
+                ctx.save();
+                ctx.strokeStyle = ch.color;
+                ctx.lineWidth = 1.5;
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+
+                for (let x = 0; x < width; x += 2) {
+                    const noise = (Math.random() - 0.5) * (noiseLevel * 0.4);
+                    const y = centerY + Math.sin((x + timeStep * (idx + 1)) * ch.freq + ch.offset) * ch.amp + noise;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            });
+
+            // Composite Carrier Wave
+            ctx.save();
+            ctx.shadowColor = isLightMode ? '#000000' : '#ffffff';
+            ctx.shadowBlur = 12;
+            ctx.strokeStyle = isLightMode ? '#000000' : '#ffffff';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+
+            for (let x = 0; x < width; x += 2) {
+                let compositeY = centerY;
+                channels.forEach((ch, idx) => {
+                    compositeY += Math.sin((x + timeStep * (idx + 1)) * ch.freq + ch.offset) * (ch.amp * 0.7);
+                });
+                const noise = (Math.random() - 0.5) * noiseLevel;
+                compositeY += noise;
+
+                if (x === 0) ctx.moveTo(x, compositeY);
+                else ctx.lineTo(x, compositeY);
+            }
+            ctx.stroke();
+            ctx.restore();
+
+            // Overlay label
+            ctx.fillStyle = isLightMode ? '#18181b' : '#f4f4f5';
+            ctx.font = '11px JetBrains Mono';
+            ctx.fillText("Composite Multi-Carrier Signal (FDM)", 15, 30);
+        }
+
+        function switchSimulatorMode(mode) {
+            simMode = mode;
+            const btnBaseband = document.getElementById('btn-mode-baseband');
+            const btnBroadband = document.getElementById('btn-mode-broadband');
+            const badge = document.getElementById('simulator-badge');
+            const infoBox = document.getElementById('simulator-info-box');
+
+            const hudBw = document.getElementById('hud-bw');
+            const hudType = document.getElementById('hud-type');
+            const hudChannels = document.getElementById('hud-channels');
+
+            if (mode === 'baseband') {
+                btnBaseband.className = "px-4 py-2 rounded-lg text-xs font-bold transition-all bg-white text-black shadow-md";
+                btnBroadband.className = "px-4 py-2 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white";
+                badge.className = "text-xs font-mono px-3 py-1 rounded-full bg-zinc-800 text-white border border-zinc-700";
+                badge.innerText = "Mode: Single Digital Channel (NRZ Encoding)";
+
+                hudBw.innerText = "100% Single Signal";
+                hudType.innerText = "Unmodulated Digital Voltage Pulses";
+                hudChannels.innerText = "1 Shared Bus";
+
+                infoBox.innerHTML = `<strong class="text-white font-mono">Baseband Mechanism:</strong> Voltage transitions directly encode raw 1s and 0s onto the conductor. Because square pulses require a continuous frequency spectrum down to 0 Hz (DC), no other channels can share this medium simultaneously without interference.`;
+            } else {
+                btnBroadband.className = "px-4 py-2 rounded-lg text-xs font-bold transition-all bg-zinc-200 text-black shadow-md";
+                btnBaseband.className = "px-4 py-2 rounded-lg text-xs font-bold transition-all text-zinc-400 hover:text-white";
+                badge.className = "text-xs font-mono px-3 py-1 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700";
+                badge.innerText = "Mode: Multi-Channel Analog Carrier Multiplexing (FDM)";
+
+                hudBw.innerText = "Split Spectrum (FDM)";
+                hudType.innerText = "Modulated High-Frequency Carriers";
+                hudChannels.innerText = "Multiple Parallel Channels";
+
+                infoBox.innerHTML = `<strong class="text-zinc-200 font-mono">Broadband Mechanism:</strong> Uses high-frequency carrier wave modulation (AM/FM/QAM). Multiple data streams are modulated onto distinct center frequencies, permitting high-capacity simultaneous voice, TV, and data transmission.`;
+            }
+        }
+
+        function updateBinarySequence(val) {
+            binaryData = val.replace(/[^01]/g, '') || '1010';
+        }
+
+        function setSpeed(val) {
+            document.getElementById('speed-range').value = val;
+            updateSpeed(val);
+        }
+
+        function updateSpeed(val) {
+            speed = parseFloat(val);
+            const speedVal = document.getElementById('speed-val');
+            if (speedVal) speedVal.innerText = `${speed.toFixed(1)}x`;
+
+            // Highlight active speed button preset if matching
+            document.querySelectorAll('.speed-btn').forEach(btn => {
+                const btnSpeed = parseFloat(btn.dataset.speed);
+                if (Math.abs(btnSpeed - speed) < 0.1) {
+                    btn.className = "speed-btn px-2 py-1 rounded-md text-xs font-mono bg-white text-black font-bold transition-colors";
+                } else {
+                    btn.className = "speed-btn px-2 py-1 rounded-md text-xs font-mono bg-zinc-800 text-zinc-400 hover:text-white transition-colors";
+                }
+            });
+        }
+
+        function updateNoise(val) {
+            noiseLevel = parseFloat(val);
+            const noiseVal = document.getElementById('noise-val');
+            if (noiseVal) noiseVal.innerText = `${Math.round(noiseLevel)}%`;
+        }
+
+        function togglePauseSimulator() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('btn-pause');
+            if (isPaused) {
+                btn.innerHTML = `<svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
+            } else {
+                btn.innerHTML = `<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>`;
+            }
+        }
+
+        function calculateCapacity() {
+            const bw = parseFloat(document.getElementById('input-bw').value);
+            const levels = parseInt(document.getElementById('input-levels').value);
+            const snrDb = parseFloat(document.getElementById('input-snr').value);
+
+            document.getElementById('calc-bw-val').innerText = `${bw} MHz`;
+            document.getElementById('calc-levels-val').innerText = `${levels} Levels (${Math.log2(levels)} bits/symbol)`;
+            document.getElementById('calc-snr-val').innerText = `${snrDb} dB`;
+
+            // Nyquist Formula
+            const nyquistBps = 2 * (bw * 1e6) * Math.log2(levels);
+            const nyquistMbps = (nyquistBps / 1e6).toFixed(2);
+
+            // Shannon Formula
+            const snrLinear = Math.pow(10, snrDb / 10);
+            const shannonBps = (bw * 1e6) * Math.log2(1 + snrLinear);
+            const shannonMbps = (shannonBps / 1e6).toFixed(2);
+
+            document.getElementById('res-nyquist').innerText = `${nyquistMbps} Mbps`;
+            document.getElementById('res-shannon').innerText = `${shannonMbps} Mbps`;
+        }
+    </script>
+</body>
+</html>
